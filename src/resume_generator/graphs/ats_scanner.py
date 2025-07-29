@@ -8,6 +8,8 @@ from typing import Any, Dict, List, Literal, Optional, cast
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import StateGraph, START, END
+from langgraph.types import Command, Interrupt
+
 from langgraph.prebuilt import ToolNode
 from pydantic import BaseModel, Field
 
@@ -16,7 +18,17 @@ from resume_generator.configuration import Configuration
 from resume_generator.tools import scrape_website, search
 from resume_generator.utils import init_model
 import re
-from resume_generator.states.ats_scanner import ATSState, ScanType, ATSDecision, ATSScore, ATSKeywordAnalysis
+from resume_generator.states.ats_scanner import (
+    ATSState, 
+    ScanType, 
+    ATSDecision, 
+    ATSScore, 
+    ATSKeywordAnalysis, 
+    ATSFormatAnalysis, 
+    ATSSkillAnalysis, 
+    ATSExperienceAnalysis, 
+    ATSEducationAnalysis
+)
 from resume_generator.prompts.ats_scanner import (
     keyword_analysis_prompt,
     skills_analysis_prompt,
@@ -32,36 +44,50 @@ logger = init_logger(__name__)
 
 class ATSScanner:
     def build_graph(self) -> StateGraph:
+
+        
         workflow = StateGraph(ATSState)
 
         # Add nodes
-        workflow.add_node("extract_data", self._extract_data)
+        workflow.add_node("analyze_format", self._analyze_format)
         workflow.add_node("analyze_keywords", self._analyze_keywords)
         workflow.add_node("analyze_skills", self._analyze_skills)
         workflow.add_node("analyze_experience", self._analyze_experience)
         workflow.add_node("analyze_education", self._analyze_education)
-        workflow.add_node("analyze_format", self._analyze_format)
         workflow.add_node("calculate_score", self._calculate_score)
         workflow.add_node("make_decision", self._make_decision)
 
         # Define the flow
-        workflow.set_entry_point("extract_data")
-        workflow.add_edge("extract_data", "analyze_keywords")
-        workflow.add_edge("extract_data", "analyze_skills")
-        workflow.add_edge("extract_data", "analyze_experience")
-        workflow.add_edge("extract_data", "analyze_education")
-        workflow.add_edge("extract_data", "analyze_format")
+        workflow.add_edge(START, "analyze_format")
+        workflow.add_edge(START, "analyze_keywords")
+        workflow.add_edge(START, "analyze_skills")
+        workflow.add_edge(START, "analyze_experience")
+        workflow.add_edge(START, "analyze_education")
 
+        workflow.add_edge("analyze_format", "calculate_score")
         workflow.add_edge("analyze_keywords", "calculate_score")
         workflow.add_edge("analyze_skills", "calculate_score")
         workflow.add_edge("analyze_experience", "calculate_score")
         workflow.add_edge("analyze_education", "calculate_score")
-        workflow.add_edge("analyze_format", "calculate_score")
         
         workflow.add_edge("calculate_score", "make_decision")
         workflow.add_edge("make_decision", END)
         
         return workflow.compile()
+    
+    async def _analyze_format(self, state: ATSState):
+        """Analyze resume format and ATS compatibility"""
+        raw_resume = state["raw_resume"]
+        llm = get_llm_by_type(AGENT_LLM_MAP["ats_analyst"]).with_structured_output(ATSFormatAnalysis)
+        messages = [
+            SystemMessage(content=resume_format_prompt.format(raw_resume=raw_resume)),
+            HumanMessage(content="") #TODO: write short human prompt for quick ATS format scan
+        ]
+        response = await llm.ainvoke(messages)
+
+        return {
+            "format_analysis": response
+        }
     
     async def _analyze_keywords(self, state: ATSState):
         """Analyze keyword matching"""
@@ -71,7 +97,7 @@ class ATSScanner:
         llm = get_llm_by_type(AGENT_LLM_MAP["ats_analyst"]).with_structured_output(ATSKeywordAnalysis)
         messages = [
             SystemMessage(content=keyword_analysis_prompt.format(job_description=job_description, raw_resume=raw_resume)),
-            HumanMessage(content="Extract the structured resume information from the provided resume.")
+            HumanMessage(content="") #TODO: short human prompt to analyze keywords matching
         ]
         response = await llm.ainvoke(messages)
         return {
@@ -86,7 +112,7 @@ class ATSScanner:
         llm = get_llm_by_type(AGENT_LLM_MAP["ats_analyst"]).with_structured_output(ATSKeywordAnalysis)
         messages = [
             SystemMessage(content=skills_analysis_prompt.format(job_description=job_description, raw_resume=raw_resume)),
-            HumanMessage(content="Extract the structured resume information from the provided resume.")
+            HumanMessage(content="") #TODO: short human prompt for analyzing skills matching
         ]
         response = await llm.ainvoke(messages)
         return {
@@ -101,11 +127,11 @@ class ATSScanner:
         llm = get_llm_by_type(AGENT_LLM_MAP["ats_analyst"]).with_structured_output(ATSKeywordAnalysis)
         messages = [
             SystemMessage(content=experience_quality_prompt.format(job_description=job_description, raw_resume=raw_resume)),
-            HumanMessage(content="Extract the structured resume information from the provided resume.")
+            HumanMessage(content="") #TODO: short human prompt for analyzing experience requirements
         ]
         response = await llm.ainvoke(messages)
         return {
-            "skills_analysis": response
+            "experience_analysis": response
         }
     
     async def _analyze_education(self, state: ATSState) -> ATSState:
@@ -115,27 +141,12 @@ class ATSScanner:
         
         llm = get_llm_by_type(AGENT_LLM_MAP["ats_analyst"]).with_structured_output(ATSKeywordAnalysis)
         messages = [
-            SystemMessage(content=experience_quality_prompt.format(job_description=job_description, raw_resume=raw_resume)),
-            HumanMessage(content="Extract the structured resume information from the provided resume.")
+            SystemMessage(content=education_score_prompt.format(job_description=job_description, raw_resume=raw_resume)),
+            HumanMessage(content="") #TODO: short prompot for education analysis
         ]
         response = await llm.ainvoke(messages)
         return {
-            "skills_analysis": response
-        }
-    
-    async def _analyze_format(self, state: ATSState) -> ATSState:
-        """Analyze resume format and ATS compatibility"""
-        raw_resume = state["raw_resume"]
-        job_description = state["job_description"]
-        
-        llm = get_llm_by_type(AGENT_LLM_MAP["ats_analyst"]).with_structured_output(ATSKeywordAnalysis)
-        messages = [
-            SystemMessage(content=experience_quality_prompt.format(job_description=job_description, raw_resume=raw_resume)),
-            HumanMessage(content="Extract the structured resume information from the provided resume.")
-        ]
-        response = await llm.ainvoke(messages)
-        return {
-            "skills_analysis": response
+            "education_analysis": response
         }
     
     async def _calculate_score(self, state: ATSState) -> ATSState:
@@ -169,14 +180,16 @@ class ATSScanner:
             format_score * weights["format"]
         )
         
-        state["final_score"] = {
-            "keyword_score": keyword_score,
-            "skills_score": skills_score,
-            "experience_score": experience_score,
-            "education_score": education_score,
-            "format_score": format_score,
-            "overall_score": overall_score,
-            "weights": weights
+        return {
+            "final_score": {
+                "keyword_score": keyword_score,
+                "skills_score": skills_score,
+                "experience_score": experience_score,
+                "education_score": education_score,
+                "format_score": format_score,
+                "overall_score": overall_score,
+                "weights": weights
+            }
         }
         
         return state

@@ -2,14 +2,14 @@ from typing import TypedDict, Dict, Any, List, Annotated, Literal
 from pydantic import BaseModel, Field, conint
 from enum import Enum
 
-class ScanType(Enum):
-    NORMAL_RESUME = "normal_resume"
-    LINKEDIN_PROFILE = "linkedin_profile"
-
 class ATSDecision(Enum):
     PASS = "PASS"
     REJECT = "REJECT"
     REVIEW = "REVIEW"
+
+class ATSFormatAnalysis(BaseModel):
+    format_score: Annotated[int, Field(..., strict=True, ge=0, le=100, description="Percentage of format score")]
+    format_feedback: str = Field(description='Format issues or validation points, e.g. No skills section, Missing dates in experience')
 
 class ATSKeywordAnalysis(BaseModel):
     match_score: Annotated[int, Field(..., strict=True, ge=0, le=100, description="Match score (0–100)")]
@@ -22,11 +22,10 @@ class ATSSkillAnalysis(BaseModel):
     required_skills: List[str] = Field(..., description="Skills extracted as required from the job description")
     preferred_skills: List[str] = Field(..., description="Skills extracted as preferred from the job description")
     candidate_skills: List[str] = Field(..., description="Skills extracted from the candidate's resume")
-    matched_required: List[str] = Field(..., description="Required skills matched in the candidate skills")
-    matched_preferred: List[str] = Field(..., description="Preferred skills matched in the candidate skills")
-
+    
 class ATSExperienceAnalysis(BaseModel):
     experience_quality: Literal["high", "medium", "low"] = Field(..., description="Overall quality of the candidate's experience")
+    experience_score: Annotated[int, Field(..., strict=True, ge=0, le=100, description="Percentage of experience score")]
     analysis: str = Field(..., description="Explanation of the experience quality assessment")
 
 class ATSEducationAnalysis(BaseModel):
@@ -52,7 +51,6 @@ class ATSState(TypedDict):
     skills_analysis: ATSSkillAnalysis
     experience_analysis: ATSExperienceAnalysis
     education_analysis: ATSEducationAnalysis
-    format_analysis: Dict[str, Any]
-    final_score: Dict[str, Any]
+    format_analysis: ATSFormatAnalysis
+    final_score: ATSScore
     decision: str
-    feedback: List[str]
