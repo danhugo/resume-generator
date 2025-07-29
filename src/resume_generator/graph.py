@@ -215,7 +215,7 @@ def route_after_checker(
 
 # Create the graph
 workflow = StateGraph(
-    State, input=InputState, output=OutputState, config_schema=Configuration
+    State, input_schema=InputState, output_schema=OutputState
 )
 workflow.add_node(call_agent_model)
 workflow.add_node(reflect)
