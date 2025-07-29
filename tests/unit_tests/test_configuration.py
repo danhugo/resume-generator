@@ -1,4 +1,4 @@
-from enrichment_agent.configuration import Configuration
+from resume_generator.configuration import Configuration
 
 
 def test_configuration_from_none() -> None:

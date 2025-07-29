@@ -3,7 +3,7 @@ from typing import Any, Dict
 import pytest
 from langsmith import unit
 
-from enrichment_agent import graph
+from resume_generator import graph
 
 
 @pytest.fixture(scope="function")
