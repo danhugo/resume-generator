@@ -60,3 +60,4 @@ class Configuration:
         configurable = config.get("configurable") or {}
         _fields = {f.name for f in fields(cls) if f.init}
         return cls(**{k: v for k, v in configurable.items() if k in _fields})
+        

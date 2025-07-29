@@ -1,0 +1,12 @@
+GEMINI-2.5-PRO:
+  model: "gemini-2.5-pro"
+  model_provider: "google_genai"
+  thinking_budget: 1024
+
+GEMINI-2.5-FLASH:
+  model: "gemini-2.5-flash"
+  model_provider: "google_genai"
+
+GEMINI-2.5-FLASH-LITE:
+  model: "gemini-2.5-flash-lite-preview-06-17"
+  model_provider: "google_genai"
