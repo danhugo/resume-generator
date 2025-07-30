@@ -9,19 +9,19 @@ class ATSDecision(Enum):
 
 class ATSFormatAnalysis(BaseModel):
     format_score: Annotated[int, Field(..., strict=True, ge=0, le=100, description="Percentage of format score")]
-    format_feedback: str = Field(description='Format issues or validation points, e.g. No skills section, Missing dates in experience')
+    analysis: str = Field(description='Format issues or validation points, e.g. No skills section, Missing dates in experience')
 
 class ATSKeywordAnalysis(BaseModel):
-    match_score: Annotated[int, Field(..., strict=True, ge=0, le=100, description="Match score (0–100)")]
     job_keywords: List[str] = Field(..., description="Exact keywords from job description")
     resume_keywords: List[str] = Field(..., description="Exact keywords from resume")
+    match_score: Annotated[int, Field(..., strict=True, ge=0, le=100, description="Match score (0–100)")]
 
 class ATSSkillAnalysis(BaseModel):
-    required_score: Annotated[int, Field(..., strict=True, ge=0, le=100, description="Percentage of required skills matched")]
-    preferred_score: Annotated[int, Field(..., strict=True, ge=0, le=100, description="Percentage of preferred skills matched")]
     required_skills: List[str] = Field(..., description="Skills extracted as required from the job description")
     preferred_skills: List[str] = Field(..., description="Skills extracted as preferred from the job description")
     candidate_skills: List[str] = Field(..., description="Skills extracted from the candidate's resume")
+    required_score: Annotated[int, Field(..., strict=True, ge=0, le=100, description="Percentage of required skills matched")]
+    preferred_score: Annotated[int, Field(..., strict=True, ge=0, le=100, description="Percentage of preferred skills matched")]
     
 class ATSExperienceAnalysis(BaseModel):
     experience_quality: Literal["high", "medium", "low"] = Field(..., description="Overall quality of the candidate's experience")
@@ -35,11 +35,11 @@ class ATSEducationAnalysis(BaseModel):
     meets_requirement: bool = Field(..., description="Whether candidate meets or exceeds required level")
 
 class ATSScore(BaseModel):
-    keyword_match: float = Field(description="Score for keyword match")
-    skills_match: float = Field(description="Score for skills match")
-    experience_match: float = Field(description="Score for experience match")
-    education_match: float = Field(description="Score for education match")
     format_score: float = Field(description="Score for resume format")
+    keyword_score: float = Field(description="Score for keyword match")
+    skills_score: float = Field(description="Score for skills match")
+    experience_score: float = Field(description="Score for experience match")
+    education_score: float = Field(description="Score for education match")
     overall_score: float = Field(description="Overall score based on all analyses")
     decision: ATSDecision = Field(description="Final decision based on the overall score")
     feedback: List[str] = Field(description="Feedback for the candidate based on the analysis")
@@ -47,10 +47,10 @@ class ATSScore(BaseModel):
 class ATSState(TypedDict):
     raw_resume: str
     job_description: str
+    format_analysis: ATSFormatAnalysis
     keyword_analysis: ATSKeywordAnalysis
     skills_analysis: ATSSkillAnalysis
     experience_analysis: ATSExperienceAnalysis
     education_analysis: ATSEducationAnalysis
-    format_analysis: ATSFormatAnalysis
     final_score: ATSScore
     decision: str

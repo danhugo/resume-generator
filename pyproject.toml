@@ -17,6 +17,7 @@ dependencies = [
     "python-dotenv>=1.0.1",
     "langchain-community>=0.2.13",
     "langchain-google-genai>=2.1.8",
+    "langgraph-cli>=0.3.6",
 ]
 
 [project.optional-dependencies]

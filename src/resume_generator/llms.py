@@ -13,23 +13,7 @@ LLMType = Literal[
     ]
 
 AGENT_LLM_MAP: dict[str, LLMType] = {
-    # CLINICAL ANALYSIS & TRIAGE (High complexity - medical decision making)
-    "clarifier": "gemini-2.5-flash",  # Clinical triage & PICO analysis requires sophisticated medical reasoning
-    
-    # RESEARCH PLANNING (High complexity - strategic thinking)
-    "decomposer": "gemini-2.5-flash",  # Clinical question decomposition requires deep medical knowledge
-    "critiquer": "gemini-2.5-flash",   # Research quality assessment needs rigorous analytical thinking
-    
-    # SEARCH & RETRIEVAL (Medium complexity - structured tasks)
-    "query_parser": "gemini-2.5-flash",  # Search query generation is structured but needs clinical context
-    
-    # INFORMATION PROCESSING (Medium-High complexity - evidence synthesis)
-    "question_info_aggregator": "gemini-2.5-flash",  # Evidence synthesis with clinical assessment
-    "reasoner": "gemini-2.5-flash",  # Clinical reasoning from first principles requires advanced thinking
-    
-    # REPORT GENERATION & REVIEW (Highest complexity - clinical communication)
-    "report_composer": "gemini-2.5-flash",  # Clinical report writing requires sophisticated medical communication
-    "report_reviewer": "gemini-2.5-flash",  # Clinical review requires expert-level medical judgment
+    "ats_analyst": "gemini-2.5-flash",
 }
 
 # Cache for LLM instances
@@ -56,7 +40,7 @@ def get_llm_by_type(llm_type: LLMType) -> Union[BaseChatModel, _ConfigurableMode
         return _llm_cache[llm_type]
 
     conf = load_yaml_config(
-        str((Path(__file__).parent / "conf.yaml").resolve())
+        str((Path(__file__).parent / "llm_config.yaml").resolve())
     )
 
     llm = _create_llm_use_conf(llm_type, conf)

@@ -3,38 +3,31 @@ This module implements an ATS (Applicant Tracking System) scanner that processes
 """
 
 import json
-from typing import Any, Dict, List, Literal, Optional, cast
 
-from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import StateGraph, START, END
 from langgraph.types import Command, Interrupt
 
-from langgraph.prebuilt import ToolNode
-from pydantic import BaseModel, Field
-
-from resume_generator import prompts
 from resume_generator.configuration import Configuration
-from resume_generator.tools import scrape_website, search
-from resume_generator.utils import init_model
-import re
+
 from resume_generator.states.ats_scanner import (
-    ATSState, 
-    ScanType, 
-    ATSDecision, 
-    ATSScore, 
-    ATSKeywordAnalysis, 
-    ATSFormatAnalysis, 
-    ATSSkillAnalysis, 
-    ATSExperienceAnalysis, 
+    ATSState,
+    ATSDecision,
+    ATSScore,
+    ATSKeywordAnalysis,
+    ATSFormatAnalysis,
+    ATSSkillAnalysis,
+    ATSExperienceAnalysis,
     ATSEducationAnalysis
 )
 from resume_generator.prompts.ats_scanner import (
-    keyword_analysis_prompt,
-    skills_analysis_prompt,
-    experience_quality_prompt,
-    education_score_prompt,
-    resume_format_prompt
+    FORMAT_ANALYSIS_PROMPT,
+    SKILLS_ANALYSIS_PROMPT,
+    KEYWORD_ANALYSIS_PROMPT,
+    EDUCATION_ANALYSIS_PROMPT,
+    EXPERIENCE_ANALYSIS_PROMPT,
+    FEEDBACK_GENERATION_PROMPT,
 )
 
 from resume_generator.logger import init_logger
@@ -44,8 +37,6 @@ logger = init_logger(__name__)
 
 class ATSScanner:
     def build_graph(self) -> StateGraph:
-
-        
         workflow = StateGraph(ATSState)
 
         # Add nodes
@@ -80,11 +71,10 @@ class ATSScanner:
         raw_resume = state["raw_resume"]
         llm = get_llm_by_type(AGENT_LLM_MAP["ats_analyst"]).with_structured_output(ATSFormatAnalysis)
         messages = [
-            SystemMessage(content=resume_format_prompt.format(raw_resume=raw_resume)),
-            HumanMessage(content="") #TODO: write short human prompt for quick ATS format scan
+            SystemMessage(content=FORMAT_ANALYSIS_PROMPT.format(raw_resume=raw_resume)),
+            HumanMessage(content="Please evaluate the format of this resume for ATS compatibility.")
         ]
         response = await llm.ainvoke(messages)
-
         return {
             "format_analysis": response
         }
@@ -96,8 +86,8 @@ class ATSScanner:
         
         llm = get_llm_by_type(AGENT_LLM_MAP["ats_analyst"]).with_structured_output(ATSKeywordAnalysis)
         messages = [
-            SystemMessage(content=keyword_analysis_prompt.format(job_description=job_description, raw_resume=raw_resume)),
-            HumanMessage(content="") #TODO: short human prompt to analyze keywords matching
+            SystemMessage(content=KEYWORD_ANALYSIS_PROMPT.format(job_description=job_description, raw_resume=raw_resume)),
+            HumanMessage(content="Compare the resume against the job description and return keyword match scores and missed keywords.")
         ]
         response = await llm.ainvoke(messages)
         return {
@@ -109,10 +99,10 @@ class ATSScanner:
         raw_resume = state["raw_resume"]
         job_description = state["job_description"]
         
-        llm = get_llm_by_type(AGENT_LLM_MAP["ats_analyst"]).with_structured_output(ATSKeywordAnalysis)
+        llm = get_llm_by_type(AGENT_LLM_MAP["ats_analyst"]).with_structured_output(ATSSkillAnalysis)
         messages = [
-            SystemMessage(content=skills_analysis_prompt.format(job_description=job_description, raw_resume=raw_resume)),
-            HumanMessage(content="") #TODO: short human prompt for analyzing skills matching
+            SystemMessage(content=SKILLS_ANALYSIS_PROMPT.format(job_description=job_description, raw_resume=raw_resume)),
+            HumanMessage(content="Assess required and preferred skill matches between the resume and job description.")
         ]
         response = await llm.ainvoke(messages)
         return {
@@ -124,10 +114,10 @@ class ATSScanner:
         raw_resume = state["raw_resume"]
         job_description = state["job_description"]
         
-        llm = get_llm_by_type(AGENT_LLM_MAP["ats_analyst"]).with_structured_output(ATSKeywordAnalysis)
+        llm = get_llm_by_type(AGENT_LLM_MAP["ats_analyst"]).with_structured_output(ATSExperienceAnalysis)
         messages = [
-            SystemMessage(content=experience_quality_prompt.format(job_description=job_description, raw_resume=raw_resume)),
-            HumanMessage(content="") #TODO: short human prompt for analyzing experience requirements
+            SystemMessage(content=EXPERIENCE_ANALYSIS_PROMPT.format(job_description=job_description, raw_resume=raw_resume)),
+            HumanMessage(content="Check whether the candidate's experience matches the job's years of experience requirements.")
         ]
         response = await llm.ainvoke(messages)
         return {
@@ -139,10 +129,10 @@ class ATSScanner:
         raw_resume = state["raw_resume"]
         job_description = state["job_description"]
         
-        llm = get_llm_by_type(AGENT_LLM_MAP["ats_analyst"]).with_structured_output(ATSKeywordAnalysis)
+        llm = get_llm_by_type(AGENT_LLM_MAP["ats_analyst"]).with_structured_output(ATSEducationAnalysis)
         messages = [
-            SystemMessage(content=education_score_prompt.format(job_description=job_description, raw_resume=raw_resume)),
-            HumanMessage(content="") #TODO: short prompot for education analysis
+            SystemMessage(content=EDUCATION_ANALYSIS_PROMPT.format(job_description=job_description, raw_resume=raw_resume)),
+            HumanMessage(content="Evaluate if the candidate meets the job's education requirements.")
         ]
         response = await llm.ainvoke(messages)
         return {
@@ -151,11 +141,11 @@ class ATSScanner:
     
     async def _calculate_score(self, state: ATSState) -> ATSState:
         """Calculate final ATS score"""
+        format_analysis = state["format_analysis"]
         keyword_analysis = state["keyword_analysis"]
         skills_analysis = state["skills_analysis"]
         experience_analysis = state["experience_analysis"]
         education_analysis = state["education_analysis"]
-        format_analysis = state["format_analysis"]
         
         # Weighted scoring (real ATS systems use similar weights)
         weights = {
@@ -166,11 +156,11 @@ class ATSScanner:
             "format": 0.10       # 10% - Format/ATS compatibility
         }
         
+        format_score = format_analysis["format_score"]
         keyword_score = keyword_analysis["match_score"]
         skills_score = (skills_analysis["required_score"] * 0.8 + skills_analysis["preferred_score"] * 0.2)
         experience_score = experience_analysis["experience_score"]
         education_score = education_analysis["education_score"]
-        format_score = format_analysis["format_score"]
         
         overall_score = (
             keyword_score * weights["keywords"] +
@@ -179,20 +169,21 @@ class ATSScanner:
             education_score * weights["education"] +
             format_score * weights["format"]
         )
+
+        attsscore = ATSScore(
+            format_score=format_score,
+            keyword_score=keyword_score,
+            skills_score=skills_score,
+            experience_score=experience_score,
+            education_score=education_score,
+            overall_score=overall_score
+        )
         
         return {
-            "final_score": {
-                "keyword_score": keyword_score,
-                "skills_score": skills_score,
-                "experience_score": experience_score,
-                "education_score": education_score,
-                "format_score": format_score,
-                "overall_score": overall_score,
-                "weights": weights
-            }
+            "final_score": attsscore
         }
         
-        return state
+    
     
     async def _make_decision(self, state: ATSState) -> ATSState:
         """Make final ATS decision"""
@@ -208,53 +199,38 @@ class ATSScanner:
             decision = ATSDecision.REJECT.value
         
         # Generate feedback
-        feedback = self._generate_feedback(state)
-        
-        state["decision"] = decision
-        state["feedback"] = feedback
-        
-        return state
-
-    def _generate_feedback(self, state: ATSState) -> List[str]:
-        """Generate detailed feedback for the candidate"""
-        feedback = []
-        
         keyword_analysis = state["keyword_analysis"]
         skills_analysis = state["skills_analysis"]
         experience_analysis = state["experience_analysis"]
         education_analysis = state["education_analysis"]
         format_analysis = state["format_analysis"]
         
-        # Keyword feedback
-        if keyword_analysis["match_score"] < 70:
-            missing = keyword_analysis["missed_keywords"][:3]  # Top 3 missing
-            feedback.append(f"Missing important keywords: {', '.join(missing)}")
+        # Construct feedback input data
+        feedback_input = {
+            "keyword_analysis": keyword_analysis,
+            "skills_analysis": skills_analysis,
+            "experience_analysis": experience_analysis,
+            "education_analysis": education_analysis,
+            "format_analysis": format_analysis,
+        }
+
+        # Initialize LLM
+        job_description = state["job_description"]
+        raw_resume = state["raw_resume"]
+
+        llm = get_llm_by_type(AGENT_LLM_MAP["ats_analyst"])
         
-        # Skills feedback
-        if skills_analysis["missing_required"]:
-            missing_skills = skills_analysis["missing_required"][:3]
-            feedback.append(f"Missing required skills: {', '.join(missing_skills)}")
+        messages = [
+            SystemMessage(content=FEEDBACK_GENERATION_PROMPT.format(job_description=job_description, raw_resume=raw_resume)),
+            HumanMessage(content=f"Please generate feedback based on the following analysis:\n{json.dumps(feedback_input, indent=2)}")
+        ]
         
-        # Experience feedback
-        if not experience_analysis["meets_requirement"]:
-            feedback.append(f"Insufficient experience: {experience_analysis['estimated_years']} years vs {experience_analysis['required_years']} required")
-        
-        # Education feedback
-        if not education_analysis["meets_requirement"]:
-            feedback.append(f"Education requirement not met: {education_analysis['required_education']} required")
-        
-        # Format feedback
-        if format_analysis["format_issues"]:
-            feedback.extend([f"Format issue: {issue}" for issue in format_analysis["format_issues"][:2]])
-        
-        # Positive feedback
-        if keyword_analysis["match_score"] >= 80:
-            feedback.append("Strong keyword optimization")
-        
-        if skills_analysis["required_score"] >= 80:
-            feedback.append("Excellent skills match")
-        
-        return feedback
+        response = await llm.ainvoke(messages)
+
+        return {
+            "decision": decision,
+            "feedback": response,
+        }  
     
 ats_scanner = ATSScanner()
 graph = ats_scanner.build_graph()

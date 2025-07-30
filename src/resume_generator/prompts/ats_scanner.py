@@ -1,117 +1,183 @@
-keyword_analysis_prompt = """
-You are an AI assistant evaluating how well a resume matches a job description.
+KEYWORD_ANALYSIS_PROMPT = """
+You are an ATS keyword analyzer. Extract and match keywords between resume and job description.
 
-Your task:
-1. Extract relevant keywords *exactly as they appear* in the **job description**.
-2. Extract relevant keywords *exactly as they appear* in the **resume**.
-3. Compare both sets of keywords and compute a match score:
-   - The score is the percentage of job keywords that are also found in the resume (case-insensitive match, exact phrase).
-   - Do not infer, reword, or generalize. Use only the literal words/phrases present in the text.
+TASK: Find exact keyword matches for ATS screening.
 
-Output format:
+INSTRUCTIONS:
+- Extract technical terms, job titles, certifications, tools from both texts
+- Use exact phrases as written (case-insensitive matching)
+- Calculate match percentage: (job keywords found in resume / total job keywords) × 100
+- Focus on ATS-relevant terms: skills, technologies, certifications, job functions
+
+RETURN ONLY valid JSON:
 {
-  "job_keywords": [...],       // list of keywords from job description (exact phrases)
-  "resume_keywords": [...],    // list of keywords from resume (exact phrases)
-  "match_score": float         // % of job_keywords found in resume_keywords
+  "job_keywords": ["keyword1", "keyword2"],
+  "resume_keywords": ["keyword1", "keyword3"],
+  "match_score": 50
 }
 
-Job Description:
+JOB DESCRIPTION:
 {job_description}
 
-Resume:
+RESUME:
 {raw_resume}
 """
 
-skills_analysis_prompt = """
-You are an AI assistant in an Applicant Tracking System (ATS).
+SKILLS_ANALYSIS_PROMPT = """
+You are an ATS skills matcher. Extract and compare skills between job requirements and candidate resume.
 
-Given only the full text of a candidate's resume and a job description:
+TASK: Identify required/preferred skills and calculate match rates.
 
-1. Extract the list of **required skills** and **preferred skills** from the job description.
-2. Extract the list of **skills** from the resume.
-3. Compare the extracted candidate skills to the required and preferred skills.
-4. A skill is matched if it appears clearly in both documents (case-insensitive, partial matches allowed).
-5. Calculate the percentage of required and preferred skills matched.
+INSTRUCTIONS:
+- Extract required skills (must-have, required, essential)
+- Extract preferred skills (nice-to-have, preferred, bonus)
+- Extract all candidate skills from resume
+- Match skills using case-insensitive partial matching
+- Calculate: required_score = (matched required / total required) × 100
+- Calculate: preferred_score = (matched preferred / total preferred) × 100
 
-Input:
+RETURN ONLY valid JSON:
+{
+  "required_skills": ["Python", "SQL", "AWS"],
+  "preferred_skills": ["Docker", "Kubernetes"],
+  "candidate_skills": ["Python", "SQL", "JavaScript"],
+  "required_score": 67,
+  "preferred_score": 0
+}
 
-Job Description:
+JOB DESCRIPTION:
 {job_description}
 
-Resume:
+RESUME:
 {raw_resume}
-
-Output format:
-
-{
-  "required_skills": [list of extracted required skills],
-  "preferred_skills": [list of extracted preferred skills],
-  "candidate_skills": [list of skills extracted from the resume],
-  "matched_required": [list of required skills found in candidate skills],
-  "matched_preferred": [list of preferred skills found in candidate skills],
-  "required_score": int (percentage of required skills matched),
-  "preferred_score": int (percentage of preferred skills matched)
-}
 """
 
-experience_quality_prompt = """
-You are an ATS assistant.
+EXPERIENCE_ANALYSIS_PROMPT = """
+You are an ATS experience evaluator. Assess candidate experience quality and relevance.
 
-Evaluate the quality of the candidate's work experience in relation to the job description.
+TASK: Rate experience quality for ATS scoring.
 
-Based on the resume and job description, assess how strong and relevant the candidate’s past roles and responsibilities are for this position.
+EVALUATION CRITERIA:
+- Role relevance to target position
+- Industry alignment
+- Years of experience vs requirements
+- Seniority level progression
+- Achievement impact
 
-Output format:
+QUALITY RATINGS:
+- HIGH (80-100): Strong relevant experience exceeding requirements
+- MEDIUM (60-79): Adequate experience meeting requirements
+- LOW (0-59): Limited or misaligned experience
+
+RETURN ONLY valid JSON:
 {
-  "experience_quality": "high" | "medium" | "low",
-  "analysis": string
+  "experience_quality": "high",
+  "experience_score": 85,
+  "analysis": "Strong relevant experience in similar roles with clear progression"
 }
 
-Resume:
-{raw_resume}
-
-Job Description:
+JOB DESCRIPTION:
 {job_description}
+
+RESUME:
+{raw_resume}
 """
 
-education_score_prompt = """
-You are an ATS system.
+EDUCATION_ANALYSIS_PROMPT = """
+You are an ATS education analyzer. Compare education levels for screening.
 
-Based on the resume and job description, determine the candidate's highest education level and compare it to the required education level.
+TASK: Match candidate education against job requirements.
 
-Return only a JSON object:
+EDUCATION LEVELS:
+1 = High school/GED
+2 = Associate/Certificate
+3 = Bachelor's degree
+4 = Master's degree
+5 = PhD/Doctorate
+
+SCORING RULES:
+- Meets/exceeds requirement: 100 points
+- One level below: 75 points
+- Two levels below: 50 points
+- Three+ levels below: 25 points
+
+RETURN ONLY valid JSON:
 {
-  "candidate_level": int,  // 1: high school, 2: associate, 3: bachelor, 4: master, 5: phd
-  "required_level": int,
-  "education_score": int,  // 0–100
-  "meets_requirement": boolean
+  "candidate_level": 3,
+  "required_level": 3,
+  "education_score": 100,
+  "meets_requirement": true
 }
 
-Resume:
-{raw_resume}
-
-Job Description:
+JOB DESCRIPTION:
 {job_description}
+
+RESUME:
+{raw_resume}
 """
 
-resume_format_prompt = """
-You are an ATS (Applicant Tracking System). Evaluate the resume formatting and compatibility based on the following criteria. The resume text is below.
+FORMAT_ANALYSIS_PROMPT = """
+You are an ATS format checker. Evaluate resume ATS compatibility.
 
-Resume:
-{raw_resume}
+TASK: Check format requirements for ATS processing.
 
-Check for:
-- Length issues (too short < 100 chars or too long > 10,000 chars)
-- Presence of contact information (e.g., email address)
-- Sections: "experience" or "work", "education", and "skills"
-- Number of standard sections present: summary, objective, experience, education, skills
-- Whether dates are included in experience (formats like YYYY, MM/YYYY, MM-YYYY)
+INPUT: Plaintext resume content only (no file structure or visual formatting available).
 
-Return JSON with:
+ATS FORMAT CHECKLIST (Content-Level Only):
+- Length: Between 100 and 5,000 characters
+- Contact Info:
+  - Must include a valid email address
+  - Preferably includes phone number and/or location
+- Required Sections (detectable by header keywords):
+  - Work Experience or Professional Experience
+  - Education
+  - Skills
+- Date Formats:
+  - Employment/education dates use consistent YYYY or MM/YYYY formats
+- Section Headers:
+  - Clearly labeled with standard keywords (e.g., “Experience”, “Education”, “Skills”)
+- Bullet Points (optional):
+  - Experience descriptions use basic bullet-style formatting (-, *, •) or newline lists
+
+SCORING:
+- All requirements met: 90–100
+- Minor issues (1–2 checklist items missed): 70–89
+- Major issues (3–4 items missed): 50–69
+- ATS incompatible (5+ items missed): 0–49
+
+RETURN ONLY valid JSON:
 {
-  "decision": boolean,  // true if the resume is ATS-friendly (passes minimum format requirements), false otherwise
-  "assessment": [string]  // List of specific format issues or validation points, e.g. ["No skills section", "Missing dates in experience"]
+  "format_score": 85,
+  "analysis": "Missing skills section; inconsistent date formats"
 }
+
+RESUME:
+{raw_resume}
+"""
+
+FEEDBACK_GENERATION_PROMPT = """
+You are an ATS feedback evaluator. Generate actionable and constructive feedback based on the analysis of a resume.
+
+TASK: Create a list of professional feedback points to guide candidates in improving their resume for better ATS compatibility and alignment with the job description.
+
+FEEDBACK CRITERIA:
+- Keyword and skill match relevance
+- Missing or weak qualifications (experience, education)
+- ATS format compliance
+- Areas of strength or optimization
+- Critical issues affecting ATS ranking
+
+FEEDBACK STYLE:
+- Bullet point list
+- Concise and professional tone
+- Highlight both strengths and weaknesses
+- Prioritize critical improvements
+
+JOB DESCRIPTION:
+{job_description}
+
+ANALYSIS RESULTS:
+{analysis_results}
 """
 
 

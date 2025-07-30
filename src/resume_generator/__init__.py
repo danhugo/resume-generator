@@ -1,5 +1,5 @@
-"""Enrichment for a pre-defined schema."""
+"""Resume-generator for a pre-defined schema."""
 
-from resume_generator.graph import graph
+from resume_generator.graphs.ats_scanner import graph
 
 __all__ = ["graph"]

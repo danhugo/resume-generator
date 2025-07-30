@@ -7,7 +7,6 @@ from typing import Annotated, Optional
 
 from langchain_core.runnables import RunnableConfig, ensure_config
 
-from resume_generator import prompts
 
 
 @dataclass(kw_only=True)
@@ -19,14 +18,6 @@ class Configuration:
         metadata={
             "description": "The name of the language model to use for the agent. "
             "Should be in the form: provider/model-name."
-        },
-    )
-
-    prompt: str = field(
-        default=prompts.MAIN_PROMPT,
-        metadata={
-            "description": "The main prompt template to use for the agent's interactions. "
-            "Expects two f-string arguments: {info} and {topic}."
         },
     )
 
