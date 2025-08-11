@@ -36,30 +36,32 @@ from resume_generator.llms import get_llm_by_type, AGENT_LLM_MAP
 logger = init_logger(__name__)
 
 class ATSScanner:
+    def __init__(self):
+        self.llm = get_llm_by_type(AGENT_LLM_MAP["ats_analyst"])
     def build_graph(self) -> StateGraph:
         workflow = StateGraph(ATSState)
 
         # Add nodes
         workflow.add_node("analyze_format", self._analyze_format)
-        workflow.add_node("analyze_keywords", self._analyze_keywords)
-        workflow.add_node("analyze_skills", self._analyze_skills)
-        workflow.add_node("analyze_experience", self._analyze_experience)
-        workflow.add_node("analyze_education", self._analyze_education)
+        # workflow.add_node("analyze_keywords", self._analyze_keywords)
+        # workflow.add_node("analyze_skills", self._analyze_skills)
+        # workflow.add_node("analyze_experience", self._analyze_experience)
+        # workflow.add_node("analyze_education", self._analyze_education)
         workflow.add_node("calculate_score", self._calculate_score)
         workflow.add_node("make_decision", self._make_decision)
 
         # Define the flow
         workflow.add_edge(START, "analyze_format")
-        workflow.add_edge(START, "analyze_keywords")
-        workflow.add_edge(START, "analyze_skills")
-        workflow.add_edge(START, "analyze_experience")
-        workflow.add_edge(START, "analyze_education")
+        # workflow.add_edge(START, "analyze_keywords")
+        # workflow.add_edge(START, "analyze_skills")
+        # workflow.add_edge(START, "analyze_experience")
+        # workflow.add_edge(START, "analyze_education")
 
         workflow.add_edge("analyze_format", "calculate_score")
-        workflow.add_edge("analyze_keywords", "calculate_score")
-        workflow.add_edge("analyze_skills", "calculate_score")
-        workflow.add_edge("analyze_experience", "calculate_score")
-        workflow.add_edge("analyze_education", "calculate_score")
+        # workflow.add_edge("analyze_keywords", "calculate_score")
+        # workflow.add_edge("analyze_skills", "calculate_score")
+        # workflow.add_edge("analyze_experience", "calculate_score")
+        # workflow.add_edge("analyze_education", "calculate_score")
         
         workflow.add_edge("calculate_score", "make_decision")
         workflow.add_edge("make_decision", END)
@@ -69,7 +71,7 @@ class ATSScanner:
     async def _analyze_format(self, state: ATSState):
         """Analyze resume format and ATS compatibility"""
         raw_resume = state["raw_resume"]
-        llm = get_llm_by_type(AGENT_LLM_MAP["ats_analyst"]).with_structured_output(ATSFormatAnalysis)
+        llm = self.llm.with_structured_output(ATSFormatAnalysis)
         messages = [
             SystemMessage(content=FORMAT_ANALYSIS_PROMPT.format(raw_resume=raw_resume)),
             HumanMessage(content="Please evaluate the format of this resume for ATS compatibility.")

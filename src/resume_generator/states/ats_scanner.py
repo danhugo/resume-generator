@@ -8,7 +8,7 @@ class ATSDecision(Enum):
     REVIEW = "REVIEW"
 
 class ATSFormatAnalysis(BaseModel):
-    format_score: Annotated[int, Field(..., strict=True, ge=0, le=100, description="Percentage of format score")]
+    format_score: int = Field(description="Percentage of format score from 0 to 100")
     analysis: str = Field(description='Format issues or validation points, e.g. No skills section, Missing dates in experience')
 
 class ATSKeywordAnalysis(BaseModel):

@@ -9,12 +9,12 @@ INSTRUCTIONS:
 - Calculate match percentage: (job keywords found in resume / total job keywords) × 100
 - Focus on ATS-relevant terms: skills, technologies, certifications, job functions
 
-RETURN ONLY valid JSON:
-{
-  "job_keywords": ["keyword1", "keyword2"],
-  "resume_keywords": ["keyword1", "keyword3"],
-  "match_score": 50
-}
+FORMAT:
+-  "job_keywords": keywords from job description,
+-  "resume_keywords": keywords from resume,
+-  "match_score": match score (0–100) is calculated as follows:
+  - "match_score": (len(set(job_keywords) & set(resume_keywords)) / len(set(job_keywords))) * 100
+Call ATSKeywordAnalysis Tool.
 
 JOB DESCRIPTION:
 {job_description}
@@ -36,14 +36,13 @@ INSTRUCTIONS:
 - Calculate: required_score = (matched required / total required) × 100
 - Calculate: preferred_score = (matched preferred / total preferred) × 100
 
-RETURN ONLY valid JSON:
-{
-  "required_skills": ["Python", "SQL", "AWS"],
-  "preferred_skills": ["Docker", "Kubernetes"],
-  "candidate_skills": ["Python", "SQL", "JavaScript"],
-  "required_score": 67,
-  "preferred_score": 0
-}
+FORMAT:
+- "required_skills": required skills from job description,
+- "preferred_skills": preferred skills from job description,
+- "candidate_skills": skills extracted from the candidate's resume,
+- "required_score": 67,
+- "preferred_score": 0
+Call ATSSkillAnalysis Tool.
 
 JOB DESCRIPTION:
 {job_description}
@@ -69,12 +68,11 @@ QUALITY RATINGS:
 - MEDIUM (60-79): Adequate experience meeting requirements
 - LOW (0-59): Limited or misaligned experience
 
-RETURN ONLY valid JSON:
-{
-  "experience_quality": "high",
-  "experience_score": 85,
-  "analysis": "Strong relevant experience in similar roles with clear progression"
-}
+FORMAT:
+- "experience_quality": "high",
+- "experience_score": 85,
+- "analysis": "Strong relevant experience in similar roles with clear progression"
+Call ATSExperienceAnalysis Tool.
 
 JOB DESCRIPTION:
 {job_description}
@@ -101,13 +99,12 @@ SCORING RULES:
 - Two levels below: 50 points
 - Three+ levels below: 25 points
 
-RETURN ONLY valid JSON:
-{
-  "candidate_level": 3,
-  "required_level": 3,
-  "education_score": 100,
-  "meets_requirement": true
-}
+FORMAT:
+- "candidate_level": 3,
+- "required_level": 3,
+- "education_score": 100,
+- "meets_requirement": true
+Call ATSEducationAnalysis Tool.
 
 JOB DESCRIPTION:
 {job_description}
@@ -145,11 +142,10 @@ SCORING:
 - Major issues (3–4 items missed): 50–69
 - ATS incompatible (5+ items missed): 0–49
 
-RETURN ONLY valid JSON:
-{
-  "format_score": 85,
-  "analysis": "Missing skills section; inconsistent date formats"
-}
+RETURN FORMAT:
+-  format_score: format score from 0 to 100,
+-  analysis: concise summary of format issues or validation points
+Call ATSFormatAnalysis Tool.
 
 RESUME:
 {raw_resume}
