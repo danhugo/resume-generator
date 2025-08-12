@@ -10,17 +10,20 @@ INSTRUCTIONS:
 - Focus on ATS-relevant terms: skills, technologies, certifications, job functions
 
 FORMAT:
--  "job_keywords": keywords from job description,
--  "resume_keywords": keywords from resume,
--  "match_score": match score (0–100) is calculated as follows:
+- "job_keywords": keywords from job description,
+- "resume_keywords": keywords from resume,
+- "match_score": match score (0–100) is calculated as follows:
   - "match_score": (len(set(job_keywords) & set(resume_keywords)) / len(set(job_keywords))) * 100
+- If no keywords found, set:
+  - "match_score": 0
+
 Call ATSKeywordAnalysis Tool.
 
 JOB DESCRIPTION:
 {job_description}
 
 RESUME:
-{raw_resume}
+{resume}
 """
 
 SKILLS_ANALYSIS_PROMPT = """
@@ -40,15 +43,21 @@ FORMAT:
 - "required_skills": required skills from job description,
 - "preferred_skills": preferred skills from job description,
 - "candidate_skills": skills extracted from the candidate's resume,
-- "required_score": 67,
-- "preferred_score": 0
+- "required_score": required skills match score (0–100), which is calculated as follows:
+  - "required_score": (len(set(required_skills) & set(candidate_skills)) / len(set(required_skills))) * 100
+- "preferred_score": preferred skills match score (0–100), which is calculated as follows
+  - "preferred_score": (len(set(preferred_skills) & set(candidate_skills)) / len(set(preferred_skills))) * 100
+- If no required or preferred skills are found, set:
+  - "required_score": 0
+  - "preferred_score": 0
+
 Call ATSSkillAnalysis Tool.
 
 JOB DESCRIPTION:
 {job_description}
 
 RESUME:
-{raw_resume}
+{resume}
 """
 
 EXPERIENCE_ANALYSIS_PROMPT = """
@@ -69,16 +78,17 @@ QUALITY RATINGS:
 - LOW (0-59): Limited or misaligned experience
 
 FORMAT:
-- "experience_quality": "high",
-- "experience_score": 85,
-- "analysis": "Strong relevant experience in similar roles with clear progression"
+- "experience_quality": "high", "medium", or "low", which is determined based on the evaluation criteria.
+- "experience_score": int score (0–100) based on the quality rating.
+- "analysis": concise explanation of the experience quality assessment.
+
 Call ATSExperienceAnalysis Tool.
 
 JOB DESCRIPTION:
 {job_description}
 
 RESUME:
-{raw_resume}
+{resume}
 """
 
 EDUCATION_ANALYSIS_PROMPT = """
@@ -100,17 +110,23 @@ SCORING RULES:
 - Three+ levels below: 25 points
 
 FORMAT:
-- "candidate_level": 3,
-- "required_level": 3,
-- "education_score": 100,
-- "meets_requirement": true
+- "candidate_level": int (1-5) representing candidate's highest education level.
+- "required_level": int (1-5) representing minimum required education level for the job.
+- "education_score": int (0–100) based on the scoring rules.
+- "meets_requirement": bool indicating if candidate meets or exceeds required level.
+- If candidate education is not provided, set:
+- "candidate_level": 0,
+- "required_level": 0,
+- "education_score": 0,
+- "meets_requirement": false
+
 Call ATSEducationAnalysis Tool.
 
 JOB DESCRIPTION:
 {job_description}
 
 RESUME:
-{raw_resume}
+{resume}
 """
 
 FORMAT_ANALYSIS_PROMPT = """
@@ -144,11 +160,12 @@ SCORING:
 
 RETURN FORMAT:
 -  format_score: format score from 0 to 100,
--  analysis: concise summary of format issues or validation points
+-  analysis: concise summary of format issues or validation points.
+
 Call ATSFormatAnalysis Tool.
 
 RESUME:
-{raw_resume}
+{resume}
 """
 
 FEEDBACK_GENERATION_PROMPT = """
@@ -172,8 +189,8 @@ FEEDBACK STYLE:
 JOB DESCRIPTION:
 {job_description}
 
-ANALYSIS RESULTS:
-{analysis_results}
+RESUME:
+{resume}
 """
 
 

@@ -1,7 +1,7 @@
 {
   "dependencies": ["."],
   "graphs": {
-    "agent": "./src/resume_generator/graphs/ats_scanner.py:graph"
+    "agent": "./src/resume_generator/graphs/ats_scanner_graph.py:graph"
   },
   "env": ".env"
 }
