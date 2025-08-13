@@ -29,28 +29,56 @@ Built with [LangGraph](https://github.com/langchain-ai/langgraph) to support **s
 
 ## Architecture
 
-```
-User Inputs (Profile + JD)
+```vbnet
+User Inputs (Profile + Job Description)
        │
        ▼
-[Step 1-3] LangGraph Nodes:
- - Profile Analyzer
- - JD Parser
- - Match Matrix Builder
+[Step 1] LangGraph Nodes:
+ - Segment Profile and JD into two categories:
+
+   Category A — Personal Information
+     - Contact Information
+     - Professional Summary
+     - Awards / Achievements
+     - Languages
+     → Extract as-is from Profile.
+     → If a section has no information, leave it empty (still keep section header).
+
+   Category B — Job Matching Information
+     - Skills
+     - Work Experience
+     - Education
+     - Certifications / Licenses
+     - Projects
+     - Publications
+     → Compare Profile and JD to identify:
+         • Matched information (present in both)
+         • Unmatched information (present in Profile only)
+         • Missing information (present in JD only)
+     → Normalize terms to ensure consistent matching.
+     → If a section has no information in either source, leave it empty (still keep section header).
+     → Present results in bullet points, ordered as in standard resume format.
+
        │
        ▼
-[Step 4] Resume Generator Node (v1)
+[Step 2] Human can choose:
+     • Continue (default: use Personal Information + Matched Job Matching Information)
+     • Edit (add selected Unmatched and/or adjust Missing items)
        │
        ▼
-[Step 5] Evaluation Node (Keyword Match, Clarity, ATS-friendliness)
-       │
-       ├───▶ Feedback Collector Node (optional: LLM or Human-in-the-loop)
-       │         │
-       ▼         ▼
-[Step 7] Resume Revision Node (v2, v3, ...)
+[Step 3] Generate resume based on collected information
        │
        ▼
-[Step 8-9] Final Formatter + Export Node
+[Step 4] Evaluate resume
+       │
+       ▼
+[Step 5] Revise resume based on evaluation
+       │
+       ▼        
+[Step 6] Format final resume
+       │
+       ▼
+      END
 ```
 
 ---
