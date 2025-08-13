@@ -38,7 +38,7 @@ logger = init_logger(__name__)
 
 class ResumeGenerator:
     def __init__(self):
-        self.llm = get_llm_by_type(AGENT_LLM_MAP.get("resume_generator", "gemini-2.0-flash-exp"))
+        self.llm = get_llm_by_type(AGENT_LLM_MAP.get("resume_generator"))
         
     def build_graph(self) -> StateGraph:
         workflow = StateGraph(ResumeGeneratorState)

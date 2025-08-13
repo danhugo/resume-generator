@@ -14,6 +14,8 @@ LLMType = Literal[
 
 AGENT_LLM_MAP: dict[str, LLMType] = {
     "ats_analyst": "gemini-2.5-flash",
+    "resume_generator": "gemini-2.5-flash",
+
 }
 
 # Cache for LLM instances
